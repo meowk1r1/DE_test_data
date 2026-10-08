@@ -1,0 +1,2551 @@
+# ШПАРГАЛКА: SQL + PSYCOPG2 + FLASK + HTML + JS
+
+Цель:
+Минимальный набор знаний, которого достаточно, чтобы написать простое рабочее веб-приложение:
+
+* PostgreSQL
+* Python + psycopg2
+* Flask
+* HTML-формы
+* GET / POST
+* CRUD
+* получение данных из БД
+* вывод данных в HTML
+* добавление / изменение / удаление
+* немного JavaScript
+* простая капча из 4 картинок
+
+================================================
+
+1. SQL — БАЗОВЫЙ МИНИМУМ
+   ================================================
+
+## ПОДКЛЮЧЕНИЕ К БД
+
+В PostgreSQL обычно работаем с:
+
+database
+└── tables
+├── columns
+└── rows
+
+## СОЗДАНИЕ ТАБЛИЦЫ
+
+CREATE TABLE employees (
+id SERIAL PRIMARY KEY,
+name VARCHAR(100) NOT NULL,
+age INTEGER,
+position VARCHAR(100),
+salary NUMERIC(10, 2)
+);
+
+Добавить запись:
+
+INSERT INTO employees (name, age, position, salary)
+VALUES ('Михаил', 20, 'Developer', 100000);
+
+Получить всё:
+
+SELECT * FROM employees;
+
+Получить конкретные столбцы:
+
+SELECT id, name, position
+FROM employees;
+
+Условие:
+
+SELECT *
+FROM employees
+WHERE id = 1;
+
+Несколько условий:
+
+SELECT *
+FROM employees
+WHERE age > 18 AND salary > 50000;
+
+Сортировка:
+
+SELECT *
+FROM employees
+ORDER BY salary DESC;
+
+Ограничение количества:
+
+SELECT *
+FROM employees
+LIMIT 10;
+
+Поиск:
+
+SELECT *
+FROM employees
+WHERE name ILIKE '%михаил%';
+
+---
+
+## UPDATE
+
+UPDATE employees
+SET salary = 120000
+WHERE id = 1;
+
+Важно:
+
+UPDATE без WHERE изменит ВСЕ записи.
+
+---
+
+## DELETE
+
+DELETE FROM employees
+WHERE id = 1;
+
+Важно:
+
+DELETE без WHERE удалит ВСЕ записи.
+
+---
+
+## COUNT
+
+SELECT COUNT(*)
+FROM employees;
+
+---
+
+## NULL
+
+SELECT *
+FROM employees
+WHERE position IS NULL;
+
+НЕ:
+
+WHERE position = NULL
+
+Для NULL используются:
+
+IS NULL
+IS NOT NULL
+
+---
+
+## AND / OR
+
+SELECT *
+FROM employees
+WHERE age > 18
+AND salary > 50000;
+
+SELECT *
+FROM employees
+WHERE position = 'Developer'
+OR position = 'Designer';
+
+---
+
+## IN
+
+SELECT *
+FROM employees
+WHERE position IN ('Developer', 'Designer');
+
+---
+
+## BETWEEN
+
+SELECT *
+FROM employees
+WHERE salary BETWEEN 50000 AND 100000;
+
+---
+
+## LIKE / ILIKE
+
+LIKE — чувствителен к регистру.
+
+ILIKE — обычно удобнее для поиска в PostgreSQL.
+
+SELECT *
+FROM employees
+WHERE name ILIKE '%иван%';
+
+% означает любое количество символов.
+
+'_'
+означает один любой символ.
+
+================================================
+2. JOIN — САМОЕ ВАЖНОЕ
+======================
+
+Допустим:
+
+employees
+
+id | name | department_id
+
+departments
+
+id | name
+
+Получить сотрудника и название отдела:
+
+SELECT
+employees.name,
+departments.name
+FROM employees
+JOIN departments
+ON employees.department_id = departments.id;
+
+Чаще используют алиасы:
+
+SELECT
+e.name,
+d.name
+FROM employees e
+JOIN departments d
+ON e.department_id = d.id;
+
+LEFT JOIN:
+
+SELECT
+e.name,
+d.name
+FROM employees e
+LEFT JOIN departments d
+ON e.department_id = d.id;
+
+Разница:
+
+JOIN / INNER JOIN
+только записи, для которых найдено соответствие.
+
+LEFT JOIN
+все записи из левой таблицы + соответствие справа, если оно есть.
+
+================================================
+3. ПАРАМЕТРЫ SQL
+================
+
+НИКОГДА не собирай SQL так:
+
+query = f"SELECT * FROM employees WHERE id = {id}"
+
+Или:
+
+query = "SELECT * FROM employees WHERE name = '" + name + "'"
+
+Это SQL injection.
+
+Правильно:
+
+query = "SELECT * FROM employees WHERE id = %s"
+cursor.execute(query, (id,))
+
+Несколько параметров:
+
+query = """
+SELECT *
+FROM employees
+WHERE age > %s
+AND salary > %s
+"""
+
+cursor.execute(query, (18, 50000))
+
+ВАЖНО:
+
+Для одного параметра всё равно нужна запятая:
+
+cursor.execute(
+"SELECT * FROM employees WHERE id = %s",
+(employee_id,)
+)
+
+================================================
+4. PSYCOPG2
+===========
+
+Установка:
+
+pip install psycopg2-binary
+
+Импорт:
+
+import psycopg2
+
+---
+
+## ПОДКЛЮЧЕНИЕ
+
+conn = psycopg2.connect(
+host="localhost",
+port=5432,
+database="mydb",
+user="postgres",
+password="password"
+)
+
+Создаём cursor:
+
+cursor = conn.cursor()
+
+Выполняем SQL:
+
+cursor.execute(
+"SELECT * FROM employees"
+)
+
+Получаем результат:
+
+rows = cursor.fetchall()
+
+Пример:
+
+for row in rows:
+print(row)
+
+Одна запись:
+
+row = cursor.fetchone()
+
+---
+
+## INSERT
+
+cursor.execute(
+"""
+INSERT INTO employees (name, age, position, salary)
+VALUES (%s, %s, %s, %s)
+""",
+("Михаил", 20, "Developer", 100000)
+)
+
+conn.commit()
+
+ВАЖНО:
+
+После INSERT / UPDATE / DELETE:
+
+conn.commit()
+
+Иначе изменения могут не сохраниться.
+
+---
+
+## UPDATE
+
+cursor.execute(
+"""
+UPDATE employees
+SET name = %s,
+age = %s,
+position = %s,
+salary = %s
+WHERE id = %s
+""",
+(name, age, position, salary, employee_id)
+)
+
+conn.commit()
+
+---
+
+## DELETE
+
+cursor.execute(
+"DELETE FROM employees WHERE id = %s",
+(employee_id,)
+)
+
+conn.commit()
+
+---
+
+## Закрытие
+
+cursor.close()
+conn.close()
+
+Лучше:
+
+with conn.cursor() as cursor:
+cursor.execute(...)
+
+================================================
+5. FLASK — ОСНОВА
+=================
+
+Установка:
+
+pip install flask
+
+Минимальное приложение:
+
+from flask import Flask
+
+app = Flask(**name**)
+
+@app.route("/")
+def index():
+return "Hello World"
+
+if **name** == "**main**":
+app.run(debug=True)
+
+Запуск:
+
+python app.py
+
+Открыть:
+
+[http://127.0.0.1:5000/](http://127.0.0.1:5000/)
+
+================================================
+6. ROUTE
+========
+
+@app.route("/")
+def index():
+return "Главная"
+
+@app.route("/about")
+def about():
+return "О нас"
+
+URL:
+
+/
+/about
+
+---
+
+## ПЕРЕДАЧА ID В URL
+
+@app.route("/employees/[int:employee_id](int:employee_id)")
+def employee(employee_id):
+return f"Employee ID: {employee_id}"
+
+Запрос:
+
+/employees/15
+
+employee_id будет:
+
+15
+
+---
+
+## Несколько параметров
+
+@app.route("/users/[int:user_id](int:user_id)/posts/[int:post_id](int:post_id)")
+def post(user_id, post_id):
+return f"{user_id} {post_id}"
+
+================================================
+7. GET
+======
+
+GET обычно используется для получения данных.
+
+@app.route("/employees")
+def employees():
+...
+
+Например:
+
+@app.route("/employees")
+def employees():
+conn = get_db_connection()
+
+```
+with conn.cursor() as cursor:
+    cursor.execute("SELECT * FROM employees")
+    rows = cursor.fetchall()
+
+conn.close()
+
+return str(rows)
+```
+
+В браузере:
+
+GET /employees
+
+Получили список.
+
+================================================
+8. QUERY PARAMETERS
+===================
+
+URL:
+
+/employees?name=ivan&age=20
+
+Flask:
+
+from flask import request
+
+@app.route("/employees")
+def employees():
+name = request.args.get("name")
+age = request.args.get("age")
+
+```
+return f"{name} {age}"
+```
+
+request.args.get("name")
+
+получает:
+
+?name=...
+
+---
+
+## GET с параметром
+
+/search?q=python
+
+@app.route("/search")
+def search():
+q = request.args.get("q")
+
+```
+return f"Поиск: {q}"
+```
+
+================================================
+9. POST
+=======
+
+POST используется, когда клиент отправляет данные серверу.
+
+@app.route("/employees", methods=["POST"])
+def create_employee():
+...
+
+Получение данных:
+
+name = request.form.get("name")
+
+================================================
+10. HTML-ФОРМА
+==============
+
+Простая форма:
+
+<form method="POST" action="/employees">
+
+```
+<input type="text" name="name">
+
+<input type="number" name="age">
+
+<input type="text" name="position">
+
+<input type="number" name="salary">
+
+<button type="submit">
+    Добавить
+</button>
+```
+
+</form>
+
+После отправки Flask получит:
+
+request.form.get("name")
+request.form.get("age")
+request.form.get("position")
+request.form.get("salary")
+
+---
+
+## Пример Flask
+
+@app.route("/employees", methods=["POST"])
+def create_employee():
+
+```
+name = request.form.get("name")
+age = request.form.get("age")
+position = request.form.get("position")
+salary = request.form.get("salary")
+
+return f"{name}, {age}, {position}, {salary}"
+```
+
+================================================
+11. FLASK + HTML TEMPLATE
+=========================
+
+Flask использует Jinja2.
+
+Структура:
+
+project/
+app.py
+templates/
+index.html
+
+app.py:
+
+from flask import Flask, render_template
+
+app = Flask(**name**)
+
+@app.route("/")
+def index():
+return render_template(
+"index.html"
+)
+
+index.html:
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Employees</title>
+</head>
+
+<body>
+
+<h1>Сотрудники</h1>
+
+</body>
+</html>
+
+================================================
+12. ПЕРЕДАЧА ДАННЫХ В HTML
+==========================
+
+Flask:
+
+@app.route("/")
+def index():
+
+```
+employees = [
+    {"name": "Иван", "age": 25},
+    {"name": "Михаил", "age": 20}
+]
+
+return render_template(
+    "index.html",
+    employees=employees
+)
+```
+
+HTML:
+
+{% for employee in employees %}
+
+```
+<p>
+    {{ employee.name }}
+    {{ employee.age }}
+</p>
+```
+
+{% endfor %}
+
+---
+
+## Условия
+
+{% if employee.age >= 18 %}
+
+```
+Взрослый
+```
+
+{% else %}
+
+```
+Несовершеннолетний
+```
+
+{% endif %}
+
+---
+
+## Словарь
+
+{{ employee.name }}
+
+или:
+
+{{ employee["name"] }}
+
+================================================
+13. ПОЛУЧЕНИЕ СОТРУДНИКОВ ИЗ POSTGRES
+=====================================
+
+Файл:
+
+app.py
+
+from flask import Flask, render_template
+import psycopg2
+
+app = Flask(**name**)
+
+def get_db_connection():
+
+```
+return psycopg2.connect(
+    host="localhost",
+    port=5432,
+    database="mydb",
+    user="postgres",
+    password="password"
+)
+```
+
+@app.route("/employees")
+def employees():
+
+```
+conn = get_db_connection()
+
+with conn.cursor() as cursor:
+
+    cursor.execute("""
+        SELECT id, name, age, position, salary
+        FROM employees
+        ORDER BY id
+    """)
+
+    employees = cursor.fetchall()
+
+conn.close()
+
+return render_template(
+    "employees.html",
+    employees=employees
+)
+```
+
+================================================
+14. HTML СПИСКА
+===============
+
+employees.html
+
+<!DOCTYPE html>
+
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Employees</title>
+</head>
+
+<body>
+
+<h1>Сотрудники</h1>
+
+{% for employee in employees %}
+
+```
+<div>
+
+    <strong>
+        {{ employee[1] }}
+    </strong>
+
+    <span>
+        Возраст: {{ employee[2] }}
+    </span>
+
+    <span>
+        Должность: {{ employee[3] }}
+    </span>
+
+    <span>
+        Зарплата: {{ employee[4] }}
+    </span>
+
+</div>
+```
+
+{% endfor %}
+
+</body>
+
+</html>
+
+Здесь:
+
+employee[0] = id
+employee[1] = name
+employee[2] = age
+employee[3] = position
+employee[4] = salary
+
+================================================
+15. УДОБНЕЕ ПОЛУЧАТЬ ДАННЫЕ КАК СЛОВАРИ
+=======================================
+
+Можно использовать:
+
+from psycopg2.extras import RealDictCursor
+
+with conn.cursor(
+cursor_factory=RealDictCursor
+) as cursor:
+
+```
+cursor.execute(
+    "SELECT * FROM employees"
+)
+
+employees = cursor.fetchall()
+```
+
+Теперь:
+
+employee["id"]
+employee["name"]
+employee["age"]
+employee["position"]
+employee["salary"]
+
+В HTML:
+
+{{ employee.name }}
+
+или:
+
+{{ employee["name"] }}
+
+================================================
+16. CREATE — ДОБАВЛЕНИЕ
+=======================
+
+HTML:
+
+<form method="POST" action="/employees/add">
+
+```
+<input
+    type="text"
+    name="name"
+    placeholder="Имя"
+    required
+>
+
+<input
+    type="number"
+    name="age"
+    placeholder="Возраст"
+    required
+>
+
+<input
+    type="text"
+    name="position"
+    placeholder="Должность"
+    required
+>
+
+<input
+    type="number"
+    name="salary"
+    placeholder="Зарплата"
+    required
+>
+
+<button type="submit">
+    Добавить
+</button>
+```
+
+</form>
+
+Flask:
+
+@app.route(
+"/employees/add",
+methods=["POST"]
+)
+def add_employee():
+
+```
+name = request.form.get("name")
+age = request.form.get("age")
+position = request.form.get("position")
+salary = request.form.get("salary")
+
+conn = get_db_connection()
+
+with conn.cursor() as cursor:
+
+    cursor.execute(
+        """
+        INSERT INTO employees
+        (name, age, position, salary)
+        VALUES (%s, %s, %s, %s)
+        """,
+        (
+            name,
+            age,
+            position,
+            salary
+        )
+    )
+
+conn.commit()
+conn.close()
+
+return "Сотрудник добавлен"
+```
+
+================================================
+17. REDIRECT
+============
+
+После POST обычно не нужно оставлять пользователя на странице обработки.
+
+Вместо:
+
+return "Сотрудник добавлен"
+
+делаем:
+
+from flask import redirect, url_for
+
+return redirect(
+url_for("employees")
+)
+
+То есть:
+
+POST
+↓
+INSERT
+↓
+REDIRECT
+↓
+GET /employees
+
+Это стандартный подход.
+
+================================================
+18. DELETE
+==========
+
+Лучше сделать отдельную форму:
+
+<form
+    method="POST"
+    action="/employees/{{ employee.id }}/delete"
+>
+
+```
+<button type="submit">
+    Удалить
+</button>
+```
+
+</form>
+
+Flask:
+
+@app.route(
+"/employees/[int:employee_id](int:employee_id)/delete",
+methods=["POST"]
+)
+def delete_employee(employee_id):
+
+```
+conn = get_db_connection()
+
+with conn.cursor() as cursor:
+
+    cursor.execute(
+        """
+        DELETE FROM employees
+        WHERE id = %s
+        """,
+        (employee_id,)
+    )
+
+conn.commit()
+conn.close()
+
+return redirect(
+    url_for("employees")
+)
+```
+
+================================================
+19. UPDATE
+==========
+
+Страница:
+
+/employees/15/edit
+
+Flask:
+
+@app.route(
+"/employees/[int:employee_id](int:employee_id)/edit"
+)
+def edit_employee(employee_id):
+
+```
+conn = get_db_connection()
+
+with conn.cursor(
+    cursor_factory=RealDictCursor
+) as cursor:
+
+    cursor.execute(
+        """
+        SELECT *
+        FROM employees
+        WHERE id = %s
+        """,
+        (employee_id,)
+    )
+
+    employee = cursor.fetchone()
+
+conn.close()
+
+return render_template(
+    "edit.html",
+    employee=employee
+)
+```
+
+---
+
+## HTML
+
+<form
+    method="POST"
+    action="/employees/{{ employee.id }}/edit"
+>
+
+```
+<input
+    name="name"
+    value="{{ employee.name }}"
+>
+
+<input
+    name="age"
+    value="{{ employee.age }}"
+>
+
+<input
+    name="position"
+    value="{{ employee.position }}"
+>
+
+<input
+    name="salary"
+    value="{{ employee.salary }}"
+>
+
+<button type="submit">
+    Сохранить
+</button>
+```
+
+</form>
+
+---
+
+## POST UPDATE
+
+@app.route(
+"/employees/[int:employee_id](int:employee_id)/edit",
+methods=["POST"]
+)
+def update_employee(employee_id):
+
+```
+name = request.form.get("name")
+age = request.form.get("age")
+position = request.form.get("position")
+salary = request.form.get("salary")
+
+conn = get_db_connection()
+
+with conn.cursor() as cursor:
+
+    cursor.execute(
+        """
+        UPDATE employees
+        SET
+            name = %s,
+            age = %s,
+            position = %s,
+            salary = %s
+        WHERE id = %s
+        """,
+        (
+            name,
+            age,
+            position,
+            salary,
+            employee_id
+        )
+    )
+
+conn.commit()
+conn.close()
+
+return redirect(
+    url_for("employees")
+)
+```
+
+================================================
+20. ПОЛНЫЙ CRUD
+===============
+
+CRUD:
+
+C = CREATE
+R = READ
+U = UPDATE
+D = DELETE
+
+В нашем приложении:
+
+CREATE:
+
+POST /employees/add
+
+READ:
+
+GET /employees
+
+UPDATE:
+
+GET /employees/<id>/edit
+POST /employees/<id>/edit
+
+DELETE:
+
+POST /employees/<id>/delete
+
+Логика:
+
+```
+            БРАУЗЕР
+               |
+               v
+            FLASK
+               |
+        +------+------+
+        |             |
+      HTML          POST
+        |             |
+        +------+------+
+               |
+               v
+           psycopg2
+               |
+               v
+          PostgreSQL
+```
+
+================================================
+21. FLASH-СООБЩЕНИЯ
+===================
+
+Flask позволяет показать сообщение:
+
+from flask import flash
+
+flash("Сотрудник добавлен")
+
+Нужно создать приложение с secret_key:
+
+app.secret_key = "secret"
+
+В HTML:
+
+{% with messages = get_flashed_messages() %}
+
+```
+{% for message in messages %}
+
+    <p>{{ message }}</p>
+
+{% endfor %}
+```
+
+{% endwith %}
+
+Например:
+
+flash("Сотрудник успешно удалён")
+
+return redirect(
+url_for("employees")
+)
+
+================================================
+22. ОБРАБОТКА ОШИБОК
+====================
+
+try:
+
+```
+conn = get_db_connection()
+
+with conn.cursor() as cursor:
+
+    cursor.execute(...)
+
+conn.commit()
+```
+
+except Exception:
+
+```
+conn.rollback()
+```
+
+finally:
+
+```
+conn.close()
+```
+
+Если ошибка произошла после изменения БД:
+
+conn.rollback()
+
+отменяет транзакцию.
+
+================================================
+23. ОСНОВНАЯ СТРУКТУРА FLASK-ПРОЕКТА
+====================================
+
+project/
+
+```
+app.py
+
+templates/
+    base.html
+    employees.html
+    add_employee.html
+    edit_employee.html
+
+static/
+    css/
+        style.css
+
+    js/
+        app.js
+
+    images/
+```
+
+Минимально:
+
+app.py
+templates/
+static/
+
+================================================
+24. BASE.HTML
+=============
+
+Чтобы не копировать HTML во все страницы:
+
+base.html:
+
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+```
+<meta charset="UTF-8">
+
+<title>
+    {% block title %}
+    Application
+    {% endblock %}
+</title>
+```
+
+</head>
+
+<body>
+
+```
+{% block content %}
+{% endblock %}
+```
+
+</body>
+
+</html>
+
+employees.html:
+
+{% extends "base.html" %}
+
+{% block title %}
+Сотрудники
+{% endblock %}
+
+{% block content %}
+
+<h1>Сотрудники</h1>
+
+{% endblock %}
+
+================================================
+25. GET VS POST
+===============
+
+GET:
+
+GET /employees
+
+Используется:
+
+* получение данных
+* поиск
+* фильтрация
+* открытие страницы
+
+POST:
+
+POST /employees
+
+Используется:
+
+* создание
+* изменение
+* удаление
+* отправка формы
+
+Пример:
+
+GET:
+
+/employees?search=ivan
+
+POST:
+
+/employees/add
+
+Главное правило:
+
+GET = получить
+
+POST = отправить / изменить состояние
+
+================================================
+26. HTML — БАЗОВЫЙ МИНИМУМ
+==========================
+
+Заголовки:
+
+<h1>Заголовок</h1>
+
+Текст:
+
+<p>Текст</p>
+
+Ссылка:
+
+<a href="/employees">
+    Сотрудники
+</a>
+
+Кнопка:
+
+<button>
+    Нажать
+</button>
+
+Input:
+
+<input type="text">
+
+Число:
+
+<input type="number">
+
+Форма:
+
+<form method="POST">
+
+</form>
+
+Checkbox:
+
+<input
+type="checkbox"
+name="active"
+
+>
+
+Select:
+
+<select name="position">
+
+```
+<option value="developer">
+    Developer
+</option>
+
+<option value="designer">
+    Designer
+</option>
+```
+
+</select>
+
+================================================
+27. JAVASCRIPT — МИНИМУМ
+========================
+
+Подключение:
+
+<script src="/static/js/app.js"></script>
+
+Или:
+
+<script>
+
+console.log("Hello");
+
+</script>
+
+Получение элемента:
+
+const element =
+document.getElementById("my-element");
+
+Поиск:
+
+const element =
+document.querySelector(".button");
+
+Все элементы:
+
+const elements =
+document.querySelectorAll(".item");
+
+Изменение текста:
+
+element.textContent = "Hello";
+
+Изменение HTML:
+
+element.innerHTML = "<b>Hello</b>";
+
+Изменение значения input:
+
+input.value = "123";
+
+Получение значения:
+
+const value = input.value;
+
+================================================
+28. СОБЫТИЯ JS
+==============
+
+Клик:
+
+button.addEventListener(
+"click",
+function () {
+
+```
+    console.log("clicked");
+
+}
+```
+
+);
+
+Или:
+
+button.addEventListener(
+"click",
+() => {
+
+```
+    console.log("clicked");
+
+}
+```
+
+);
+
+Submit:
+
+form.addEventListener(
+"submit",
+(event) => {
+
+```
+    event.preventDefault();
+
+    console.log("form");
+
+}
+```
+
+);
+
+event.preventDefault()
+
+отменяет стандартную отправку формы.
+
+================================================
+29. СОЗДАНИЕ HTML ЧЕРЕЗ JS
+==========================
+
+Создать элемент:
+
+const img =
+document.createElement("img");
+
+Установить:
+
+img.src = "/static/images/1.jpg";
+
+img.dataset.id = "1";
+
+Добавить:
+
+container.appendChild(img);
+
+Удалить:
+
+element.remove();
+
+Очистить:
+
+container.innerHTML = "";
+
+================================================
+30. МАССИВЫ JS
+==============
+
+const images = [
+"1.jpg",
+"2.jpg",
+"3.jpg",
+"4.jpg"
+];
+
+Добавить:
+
+images.push("5.jpg");
+
+Удалить последний:
+
+images.pop();
+
+Перебрать:
+
+images.forEach(
+(image) => {
+
+```
+    console.log(image);
+
+}
+```
+
+);
+
+Получить случайный:
+
+const index =
+Math.floor(
+Math.random() * images.length
+);
+
+const image =
+images[index];
+
+================================================
+31. КАПЧА ИЗ 4 КАРТИНОК
+=======================
+
+Допустим задача:
+
+На экране 4 картинки.
+
+Пользователь должен выбрать,
+например, все картинки с автомобилем.
+
+Структура:
+
+<div id="captcha"></div>
+
+<button id="check">
+    Проверить
+</button>
+
+<p id="result"></p>
+
+JS:
+
+const captcha = document.getElementById(
+"captcha"
+);
+
+const check = document.getElementById(
+"check"
+);
+
+const result = document.getElementById(
+"result"
+);
+
+Массив картинок:
+
+const images = [
+{
+src: "/static/images/car1.jpg",
+correct: true
+},
+{
+src: "/static/images/tree.jpg",
+correct: false
+},
+{
+src: "/static/images/car2.jpg",
+correct: true
+},
+{
+src: "/static/images/house.jpg",
+correct: false
+}
+];
+
+Выбранные:
+
+const selected = new Set();
+
+Рендер:
+
+images.forEach((item, index) => {
+
+```
+const img =
+    document.createElement("img");
+
+img.src = item.src;
+
+img.dataset.index = index;
+
+img.addEventListener(
+    "click",
+    () => {
+
+        if (selected.has(index)) {
+
+            selected.delete(index);
+
+            img.classList.remove(
+                "selected"
+            );
+
+        } else {
+
+            selected.add(index);
+
+            img.classList.add(
+                "selected"
+            );
+
+        }
+
+    }
+);
+
+captcha.appendChild(img);
+```
+
+});
+
+Проверка:
+
+check.addEventListener(
+"click",
+() => {
+
+```
+    const correctIndexes =
+        images
+            .map((item, index) =>
+                item.correct
+                    ? index
+                    : null
+            )
+            .filter(
+                index => index !== null
+            );
+
+
+    const selectedIndexes =
+        [...selected].sort();
+
+
+    const expected =
+        [...correctIndexes].sort();
+
+
+    const success =
+        JSON.stringify(
+            selectedIndexes
+        ) ===
+        JSON.stringify(
+            expected
+        );
+
+
+    if (success) {
+
+        result.textContent =
+            "Капча пройдена";
+
+    } else {
+
+        result.textContent =
+            "Неверно";
+
+    }
+
+}
+```
+
+);
+
+ВАЖНО:
+
+Такая капча, если вся проверка находится
+в JavaScript, НЕ является настоящей защитой.
+
+Пользователь может открыть DevTools
+и увидеть:
+
+correct: true
+
+Для реальной проверки:
+
+JS
+↓
+POST
+↓
+Flask
+↓
+проверка
+↓
+ответ
+
+================================================
+32. КАПЧА + FLASK
+=================
+
+JS отправляет выбранные картинки:
+
+fetch("/captcha/check", {
+
+```
+method: "POST",
+
+headers: {
+    "Content-Type":
+        "application/json"
+},
+
+body: JSON.stringify({
+    selected: [...selected]
+})
+```
+
+})
+.then(response =>
+response.json()
+)
+.then(data => {
+
+```
+if (data.success) {
+
+    result.textContent =
+        "Успешно";
+
+} else {
+
+    result.textContent =
+        "Неверно";
+
+}
+```
+
+});
+
+Flask:
+
+from flask import request, jsonify
+
+@app.route(
+"/captcha/check",
+methods=["POST"]
+)
+def check_captcha():
+
+```
+data = request.get_json()
+
+selected = data.get("selected", [])
+
+
+# Здесь сервер сам знает,
+# какие изображения правильные.
+
+correct = [0, 2]
+
+
+success = (
+    sorted(selected)
+    == sorted(correct)
+)
+
+
+return jsonify({
+    "success": success
+})
+```
+
+================================================
+33. FETCH
+=========
+
+GET:
+
+fetch("/api/employees")
+.then(response =>
+response.json()
+)
+.then(data => {
+
+```
+    console.log(data);
+
+});
+```
+
+POST:
+
+fetch("/api/employees", {
+
+```
+method: "POST",
+
+headers: {
+    "Content-Type":
+        "application/json"
+},
+
+body: JSON.stringify({
+
+    name: "Михаил",
+    age: 20
+
+})
+```
+
+});
+
+Flask:
+
+@app.route(
+"/api/employees",
+methods=["POST"]
+)
+def api_create_employee():
+
+```
+data = request.get_json()
+
+name = data.get("name")
+age = data.get("age")
+
+...
+```
+
+================================================
+34. JSON
+========
+
+Flask:
+
+from flask import jsonify
+
+return jsonify({
+"id": 1,
+"name": "Михаил"
+})
+
+Результат:
+
+{
+"id": 1,
+"name": "Михаил"
+}
+
+Массив:
+
+return jsonify([
+{
+"id": 1,
+"name": "Михаил"
+},
+{
+"id": 2,
+"name": "Иван"
+}
+])
+
+================================================
+35. API CRUD
+============
+
+Если делать приложение через JS + Flask API:
+
+GET:
+
+GET /api/employees
+
+Получить сотрудников.
+
+GET:
+
+GET /api/employees/15
+
+Получить одного.
+
+POST:
+
+POST /api/employees
+
+Создать.
+
+PUT:
+
+PUT /api/employees/15
+
+Изменить.
+
+DELETE:
+
+DELETE /api/employees/15
+
+Удалить.
+
+Это уже классический REST CRUD.
+
+================================================
+36. МИНИМАЛЬНЫЙ ПОЛНЫЙ ПРИМЕР
+=============================
+
+app.py:
+
+from flask import (
+Flask,
+render_template,
+request,
+redirect,
+url_for
+)
+
+import psycopg2
+
+from psycopg2.extras import (
+RealDictCursor
+)
+
+app = Flask(**name**)
+
+def get_db_connection():
+
+```
+return psycopg2.connect(
+    host="localhost",
+    port=5432,
+    database="mydb",
+    user="postgres",
+    password="password"
+)
+```
+
+@app.route("/employees")
+def employees():
+
+```
+conn = get_db_connection()
+
+with conn.cursor(
+    cursor_factory=RealDictCursor
+) as cursor:
+
+    cursor.execute(
+        """
+        SELECT *
+        FROM employees
+        ORDER BY id
+        """
+    )
+
+    employees = cursor.fetchall()
+
+conn.close()
+
+return render_template(
+    "employees.html",
+    employees=employees
+)
+```
+
+@app.route(
+"/employees/add",
+methods=["POST"]
+)
+def add_employee():
+
+```
+name = request.form.get("name")
+age = request.form.get("age")
+position = request.form.get("position")
+salary = request.form.get("salary")
+
+conn = get_db_connection()
+
+with conn.cursor() as cursor:
+
+    cursor.execute(
+        """
+        INSERT INTO employees
+        (name, age, position, salary)
+        VALUES (%s, %s, %s, %s)
+        """,
+        (
+            name,
+            age,
+            position,
+            salary
+        )
+    )
+
+conn.commit()
+conn.close()
+
+return redirect(
+    url_for("employees")
+)
+```
+
+@app.route(
+"/employees/[int:employee_id](int:employee_id)/delete",
+methods=["POST"]
+)
+def delete_employee(employee_id):
+
+```
+conn = get_db_connection()
+
+with conn.cursor() as cursor:
+
+    cursor.execute(
+        """
+        DELETE FROM employees
+        WHERE id = %s
+        """,
+        (employee_id,)
+    )
+
+conn.commit()
+conn.close()
+
+return redirect(
+    url_for("employees")
+)
+```
+
+if **name** == "**main**":
+
+```
+app.run(
+    debug=True
+)
+```
+
+================================================
+37. employees.html
+==================
+
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+```
+<meta charset="UTF-8">
+
+<title>
+    Сотрудники
+</title>
+```
+
+</head>
+
+<body>
+
+<h1>
+    Сотрудники
+</h1>
+
+<h2>
+    Добавить сотрудника
+</h2>
+
+<form
+    method="POST"
+    action="/employees/add"
+>
+
+```
+<input
+    type="text"
+    name="name"
+    placeholder="Имя"
+    required
+>
+
+<input
+    type="number"
+    name="age"
+    placeholder="Возраст"
+    required
+>
+
+<input
+    type="text"
+    name="position"
+    placeholder="Должность"
+    required
+>
+
+<input
+    type="number"
+    name="salary"
+    placeholder="Зарплата"
+    required
+>
+
+<button type="submit">
+    Добавить
+</button>
+```
+
+</form>
+
+<h2>
+    Список сотрудников
+</h2>
+
+{% for employee in employees %}
+
+```
+<div>
+
+    <b>
+        {{ employee.name }}
+    </b>
+
+    <span>
+        {{ employee.age }} лет
+    </span>
+
+    <span>
+        {{ employee.position }}
+    </span>
+
+    <span>
+        {{ employee.salary }}
+    </span>
+
+
+    <form
+        method="POST"
+        action="/employees/{{ employee.id }}/delete"
+        style="display:inline"
+    >
+
+        <button type="submit">
+            Удалить
+        </button>
+
+    </form>
+
+</div>
+```
+
+{% endfor %}
+
+</body>
+
+</html>
+
+================================================
+38. ГЛАВНОЕ, ЧТО НУЖНО ЗАПОМНИТЬ
+================================
+
+SQL:
+
+SELECT
+получить
+
+INSERT
+добавить
+
+UPDATE
+изменить
+
+DELETE
+удалить
+
+WHERE
+условие
+
+JOIN
+объединение таблиц
+
+ORDER BY
+сортировка
+
+LIMIT
+ограничение
+
+GROUP BY
+группировка
+
+COUNT
+количество
+
+---
+
+PSYCOPG2:
+
+conn =
+подключение к PostgreSQL
+
+cursor =
+выполнение SQL
+
+cursor.execute()
+выполнить запрос
+
+fetchone()
+получить одну строку
+
+fetchall()
+получить все строки
+
+commit()
+сохранить изменения
+
+rollback()
+отменить изменения
+
+% s
+параметр SQL
+
+---
+
+FLASK:
+
+@app.route("/")
+создать URL
+
+request.args
+GET-параметры
+
+request.form
+данные HTML-формы
+
+request.get_json()
+JSON из запроса
+
+render_template()
+отдать HTML
+
+redirect()
+перенаправить
+
+url_for()
+построить URL
+
+jsonify()
+вернуть JSON
+
+---
+
+HTML:
+
+<form>
+    форма
+
+method="GET"
+получить
+
+method="POST"
+отправить
+
+name="..."
+имя поля
+
+request.form.get("...")
+получить поле во Flask
+
+---
+
+JAVASCRIPT:
+
+document.querySelector()
+найти элемент
+
+addEventListener()
+обработать событие
+
+event.preventDefault()
+отменить стандартное действие
+
+fetch()
+HTTP-запрос
+
+JSON.stringify()
+объект → JSON
+
+response.json()
+JSON → JS-объект
+
+createElement()
+создать HTML-элемент
+
+appendChild()
+добавить элемент
+
+classList.add()
+добавить CSS-класс
+
+classList.remove()
+убрать CSS-класс
+
+================================================
+39. МОДЕЛЬ МЫШЛЕНИЯ ДЛЯ WEB-ПРИЛОЖЕНИЯ
+======================================
+
+Если пользователь нажал:
+
+"Добавить сотрудника"
+
+происходит:
+
+HTML FORM
+|
+| POST
+v
+FLASK
+|
+| request.form
+v
+PYTHON
+|
+| SQL
+v
+PSYCOPG2
+|
+v
+POSTGRESQL
+|
+| INSERT
+v
+COMMIT
+|
+v
+REDIRECT
+|
+v
+GET /employees
+|
+v
+SELECT
+|
+v
+FLASK
+|
+v
+JINJA2
+|
+v
+HTML
+|
+v
+БРАУЗЕР
+
+Если приложение работает через JavaScript:
+
+HTML
+|
+v
+JavaScript
+|
+| fetch()
+v
+Flask API
+|
+v
+psycopg2
+|
+v
+PostgreSQL
+|
+v
+JSON
+|
+v
+JavaScript
+|
+v
+DOM
+|
+v
+HTML
+
+================================================
+40. МИНИМАЛЬНЫЙ НАБОР, КОТОРЫЙ НУЖНО УМЕТЬ
+==========================================
+
+SQL:
+
+[+] SELECT
+[+] INSERT
+[+] UPDATE
+[+] DELETE
+[+] WHERE
+[+] JOIN
+[+] ORDER BY
+[+] LIMIT
+[+] GROUP BY
+[+] COUNT
+[+] LIKE / ILIKE
+[+] IN
+[+] IS NULL
+[+] параметры %s
+
+PSYCOPG2:
+
+[+] connect
+[+] cursor
+[+] execute
+[+] fetchone
+[+] fetchall
+[+] commit
+[+] rollback
+[+] RealDictCursor
+
+FLASK:
+
+[+] route
+[+] GET
+[+] POST
+[+] request.args
+[+] request.form
+[+] request.get_json
+[+] render_template
+[+] redirect
+[+] url_for
+[+] jsonify
+
+HTML:
+
+[+] form
+[+] input
+[+] button
+[+] select
+[+] option
+[+] a
+[+] GET
+[+] POST
+[+] Jinja2
+
+JAVASCRIPT:
+
+[+] variables
+[+] arrays
+[+] objects
+[+] forEach
+[+] addEventListener
+[+] DOM
+[+] createElement
+[+] appendChild
+[+] classList
+[+] fetch
+[+] JSON
+[+] Set
+
+================================================
+41. САМАЯ ВАЖНАЯ СХЕМА CRUD
+===========================
+
+```
+                CRUD
+
+                 |
+   +-------------+-------------+
+   |             |             |
+   v             v             v
+
+CREATE         READ          UPDATE
+   |             |             |
+  POST           GET       GET + POST
+   |             |             |
+   v             v             v
+ INSERT        SELECT       UPDATE
+
+
+                 |
+                 v
+
+               DELETE
+                 |
+                POST
+                 |
+                 v
+               DELETE
+```
+
+Если ты понимаешь эту схему и умеешь написать её руками, у тебя уже есть фундамент для простого Flask-приложения с PostgreSQL.
