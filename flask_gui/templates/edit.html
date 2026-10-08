@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Изменение пользователя</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="card">
+    <h1>Изменение пользователя</h1>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="message {{ category }}">
+                    {% if category == "error" %} ❌ {% else %} ✅ {% endif %}
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endwith %}
+    <form method="post" action="/edit/{{ user.id }}">
+        <label>Логин</label>
+        <input name="login" value="{{ user.login }}" required>
+
+        <label>Новый пароль</label>
+        <input name="password" type="password" required>
+
+        <label>Роль</label>
+        <select name="role">
+            <option {% if user.role == "Пользователь" %}selected{% endif %}>
+                Пользователь
+            </option>
+            <option {% if user.role == "Администратор" %}selected{% endif %}>
+                Администратор
+            </option>
+        </select>
+
+        <label class="check">
+            <input type="checkbox" name="blocked"
+                   {% if user.blocked %}checked{% endif %}>
+            Заблокирован
+        </label>
+
+        <button>Сохранить</button>
+        <a class="back" href="/admin">Назад</a>
+    </form>
+</div>
+</body>
+</html>

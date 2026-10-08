@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Администратор</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="wide">
+    <div class="top">
+        <h1>Пользователи</h1>
+        <a href="/logout">Выйти</a>
+    </div>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="message {{ category }}">
+                    {% if category == "error" %} ❌ {% else %} ✅ {% endif %}
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endwith %}
+          <h2>Добавить пользователя</h2>
+            <form method="post" action="/admin/add" class="add-form">
+                <input name="login" placeholder="Логин" required>
+                <input name="password" type="password" placeholder="Пароль" required>
+                <select name="role">
+                    <option>Пользователь</option>
+                    <option>Администратор</option>
+                </select>
+                <button>Добавить</button>
+            </form>
+ <table>
+        <tr>
+            <th>ID</th>
+            <th>Логин</th>
+            <th>Роль</th>
+            <th>Ошибки</th>
+            <th>Статус</th>
+        </tr>
+
+        {% for user in users %}
+        <tr>
+            <td><a href ="/edit/{{ user.id }}">{{ user.id }}</a></td>
+            <td>{{ user.login }}</td>
+            <td>{{ user.role }}</td>
+            <td>{{ user.attempts }}</td>
+            <td>
+                {% if user.blocked %}
+                    Заблокирован
+                {% else %}
+                    Активен
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+</body>
+</html>

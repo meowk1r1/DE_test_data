@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Авторизация</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="card">
+        <h1>Авторизация</h1>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% for category, message in messages %}
+                    <div class="message {{ category }}">
+                        {% if category == "error" %} ❌ {% else %} ✅ {% endif %}
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endwith %}
+        <form method="post" action="/login">
+            <label>Логин</label>
+            <input name="login" required>
+
+            <label>Пароль</label>
+            <input name="password" type="password" required>
+            
+            <p><b>Соберите изображение</b></p>
+            <div class="puzzle">
+                    <img class="puzzle-piece" src="/static/3.png" onclick="selectPiece(0)">
+                    <img class="puzzle-piece" src="/static/1.png" onclick="selectPiece(1)">
+                    <img class="puzzle-piece" src="/static/4.png" onclick="selectPiece(2)">
+                    <img class="puzzle-piece" src="/static/2.png" onclick="selectPiece(3)">
+            </div>
+            <input type="hidden" name="captcha" class="captcha">
+            <p class="captcha-text">Пазл не собран</p>
+
+            <button type="submit">Войти</button>
+        </form>
+    </div>
+<script>
+// Получаем все части пазла и элементы для результата проверки.
+const images = document.querySelectorAll(".puzzle-piece");
+const captcha = document.querySelector(".captcha");
+const captchaText = document.querySelector(".captcha-text");
+
+let selected = -1;
+
+
+// Обрабатываем клик по картинке.
+function selectPiece(index) {
+
+    // Первый клик -- запоминаем номер картинки.
+    if (selected === -1) {
+        selected = index;
+        images[index].classList.add("selected");
+        return;
+    }
+
+    // Второй клик -- меняем две картинки местами.
+    let temp = images[selected].src;
+    images[selected].src = images[index].src;
+    images[index].src = temp;
+
+    // Сбрасываем выбор.
+    images[selected].classList.remove("selected");
+    selected = -1;
+
+    checkCaptcha();
+}
+
+
+// Проверяем правильный порядок картинок.
+function checkCaptcha() {
+    const ok =
+        images[0].src.endsWith("/1.png") &&
+        images[1].src.endsWith("/2.png") &&
+        images[2].src.endsWith("/3.png") &&
+        images[3].src.endsWith("/4.png");
+
+    // Если пазл собран правильно -- в форму попадёт значение "ok".
+    captcha.value = ok ? "ok" : "";
+
+    captchaText.textContent = ok ? "Пазл собран правильно" : "Пазл не собран";
+}
+</script>
+
+
+
+</body>
+</html>

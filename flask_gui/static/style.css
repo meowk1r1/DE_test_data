@@ -1,0 +1,147 @@
+/* Учитываем padding и border внутри заданной ширины элементов. */
+* { box-sizing: border-box; }
+
+/* Настраиваем внешний вид всей страницы: убираем стандартные отступы, добавляем внутренний отступ, выбираем шрифт, фон и цвет текста. */
+body {
+    margin: 0;
+    padding: 40px;
+    font-family: Arial, sans-serif;
+    background: #f3f5f7;
+    color: #222;
+}
+
+/* Оформляем карточку формы: ограничиваем её ширину, ставим по центру, добавляем внутренние отступы, белый фон, скругление и тень. */
+.card {
+    max-width: 460px;
+    margin: 0 auto;
+    padding: 28px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.08);
+}
+
+
+/* Размещаем подписи полей отдельной строкой и задаём отступы вокруг них. */
+label {
+    display: block;
+    margin: 14px 0 6px;
+}
+
+/* Делаем поля формы и кнопку одинаковой ширины, добавляем внутренние отступы и увеличиваем размер текста. */
+input,
+select,
+button {
+    width: 100%;
+    padding: 11px;
+    font-size: 16px;
+}
+
+/* Отделяем кнопку от полей сверху и показываем курсор-указатель при наведении. */
+button {
+    margin-top: 16px;
+    cursor: pointer;
+}
+
+.message {
+    padding: 10px;
+    margin: 12px 0;
+    border-radius: 6px;
+}
+
+/* Сообщение об ошибке выделяем светло-красным фоном. */
+.error {
+    background: #ffe2e2;
+}
+
+/* Информационное или успешное сообщение выделяем светло-зелёным фоном. */
+.success {
+    background: #e0f6e7;
+}
+
+.wide {
+    max-width: 950px;
+    margin: 0 auto;
+    padding: 28px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.08);
+}
+
+/* Размещаем элементы верхней части блока в одну строку, раздвигаем их по краям и выравниваем по вертикали. */
+.top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Растягиваем таблицу на всю ширину блока  и объединяем соседние границы ячеек. */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+/* Оформляем заголовки и ячейки таблицы: добавляем нижнюю границу, внутренние отступы и выравниваем текст по левому краю. */
+th,
+td {
+    border-bottom: 1px solid #ddd;
+    padding: 10px;
+    text-align: left;
+}
+/* Размещаем поля формы в одну строку:
+   три одинаковых по ширине столбца для полей и отдельный столбец для кнопки.
+   Также добавляем расстояние между элементами и отступ снизу. */
+.add-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    gap: 10px;
+    margin-bottom: 25px;
+}
+
+/* Убираем стандартный верхний отступ у кнопки */
+.add-form button {
+    margin: 0;
+}
+/* Размещаем флажок и его подпись в одну строку, добавляем расстояние между ними и выравниваем по центру. */
+.check {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* Для флажка возвращаем обычную ширину, чтобы он не растягивался на всю строку. */
+.check input {
+    width: auto;
+}
+
+/* Делаем ссылку «Назад» отдельным строчным блоком  и добавляем отступ сверху. */
+.back {
+    display: inline-block;
+    margin-top: 16px;
+}
+
+/* Контейнер пазла: создаём сетку 2×2 размером 300×300 пикселей */
+.puzzle {
+    width: 300px;
+    height: 300px;
+    display: grid;
+    grid-template-columns: 150px 150px;
+    margin: 15px auto;
+}
+
+/* Каждый фрагмент пазла занимает одну ячейку размером 150×150 пикселей */
+.puzzle img {
+    width: 150px;
+    height: 150px;
+    display: block;
+    cursor: pointer;
+}
+
+/* Выделяем первую выбранную часть пазла. */
+.selected {
+    outline: 3px solid #2f80ed;
+}
+
+/* Текст о состоянии CAPTCHA располагаем по центру */
+.captcha-text {
+    text-align: center;
+}
